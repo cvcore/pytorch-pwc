@@ -44,7 +44,7 @@ def backwarp(tenInput, tenFlow):
 		tenHor = torch.linspace(-1.0 + (1.0 / tenFlow.shape[3]), 1.0 - (1.0 / tenFlow.shape[3]), tenFlow.shape[3]).view(1, 1, 1, -1).expand(-1, -1, tenFlow.shape[2], -1)
 		tenVer = torch.linspace(-1.0 + (1.0 / tenFlow.shape[2]), 1.0 - (1.0 / tenFlow.shape[2]), tenFlow.shape[2]).view(1, 1, -1, 1).expand(-1, -1, -1, tenFlow.shape[3])
 
-		backwarp_tenGrid[str(tenFlow.shape)] = torch.cat([ tenHor, tenVer ], 1).cuda()
+		backwarp_tenGrid[str(tenFlow.shape)] = torch.cat([ tenHor, tenVer ], 1).to(tenFlow.device)
 	# end
 
 	if str(tenFlow.shape) not in backwarp_tenPartial:
@@ -262,10 +262,13 @@ class Network(torch.nn.Module):
 		objEstimate = self.netSix(tenFirst[-1], tenSecond[-1], None)
 		objEstimate = self.netFiv(tenFirst[-2], tenSecond[-2], objEstimate)
 		objEstimate = self.netFou(tenFirst[-3], tenSecond[-3], objEstimate)
+
+		flowFeature = objEstimate['tenFeat']
+
 		objEstimate = self.netThr(tenFirst[-4], tenSecond[-4], objEstimate)
 		objEstimate = self.netTwo(tenFirst[-5], tenSecond[-5], objEstimate)
 
-		return objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])
+		return (objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])), flowFeature
 	# end
 # end
 
