@@ -262,11 +262,10 @@ class Network(torch.nn.Module):
 		objEstimate = self.netSix(tenFirst[-1], tenSecond[-1], None)
 		objEstimate = self.netFiv(tenFirst[-2], tenSecond[-2], objEstimate)
 		objEstimate = self.netFou(tenFirst[-3], tenSecond[-3], objEstimate)
-
-		flowFeature = objEstimate['tenFeat']
-
 		objEstimate = self.netThr(tenFirst[-4], tenSecond[-4], objEstimate)
 		objEstimate = self.netTwo(tenFirst[-5], tenSecond[-5], objEstimate)
+
+		flowFeature = objEstimate['tenFeat']
 
 		return (objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])), flowFeature
 	# end
