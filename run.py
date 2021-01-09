@@ -64,8 +64,9 @@ def backwarp(tenInput, tenFlow):
 ##########################################################
 
 class Network(torch.nn.Module):
-	def __init__(self):
+	def __init__(self, feature_only=False):
 		super(Network, self).__init__()
+		self.feature_only = feature_only
 
 		class Extractor(torch.nn.Module):
 			def __init__(self):
@@ -126,6 +127,7 @@ class Network(torch.nn.Module):
 				)
 			# end
 
+			@torch.cuda.amp.autocast(False)
 			def forward(self, tenInput):
 				tenOne = self.netOne(tenInput)
 				tenTwo = self.netTwo(tenOne)
@@ -255,6 +257,7 @@ class Network(torch.nn.Module):
 		self.load_state_dict({ strKey.replace('module', 'net'): tenWeight for strKey, tenWeight in torch.load(__file__.replace('run.py', 'network-' + arguments_strModel + '.pytorch')).items() })
 	# end
 
+	@torch.cuda.amp.autocast(False)
 	def forward(self, tenFirst, tenSecond):
 		tenFirst = self.netExtractor(tenFirst)
 		tenSecond = self.netExtractor(tenSecond)
@@ -263,9 +266,11 @@ class Network(torch.nn.Module):
 		objEstimate = self.netFiv(tenFirst[-2], tenSecond[-2], objEstimate)
 		objEstimate = self.netFou(tenFirst[-3], tenSecond[-3], objEstimate)
 		objEstimate = self.netThr(tenFirst[-4], tenSecond[-4], objEstimate)
+		flowFeature = objEstimate['tenFeat']
+		if self.feature_only:
+			return None, flowFeature
 		objEstimate = self.netTwo(tenFirst[-5], tenSecond[-5], objEstimate)
 
-		flowFeature = objEstimate['tenFeat']
 
 		return (objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])), flowFeature
 	# end
