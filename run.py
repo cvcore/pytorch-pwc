@@ -64,9 +64,10 @@ def backwarp(tenInput, tenFlow):
 ##########################################################
 
 class Network(torch.nn.Module):
-	def __init__(self, feature_only=False):
+	def __init__(self, feature_only=False, feature_level=2):
 		super(Network, self).__init__()
 		self.feature_only = feature_only
+		self.feature_level = feature_level
 
 		class Extractor(torch.nn.Module):
 			def __init__(self):
@@ -206,14 +207,16 @@ class Network(torch.nn.Module):
 				tenFeat = torch.cat([ self.netOne(tenFeat), tenFeat ], 1)
 				tenFeat = torch.cat([ self.netTwo(tenFeat), tenFeat ], 1)
 				tenFeat = torch.cat([ self.netThr(tenFeat), tenFeat ], 1)
-				tenFeat = torch.cat([ self.netFou(tenFeat), tenFeat ], 1)
+				tenFeatSingle = self.netFou(tenFeat)
+				tenFeat = torch.cat([ tenFeatSingle, tenFeat ], 1)
 				tenFeat = torch.cat([ self.netFiv(tenFeat), tenFeat ], 1)
 
 				tenFlow = self.netSix(tenFeat)
 
 				return {
 					'tenFlow': tenFlow,
-					'tenFeat': tenFeat
+					'tenFeat': tenFeat,
+					'tenFeatSingle': tenFeatSingle
 				}
 			# end
 		# end
@@ -262,15 +265,15 @@ class Network(torch.nn.Module):
 		tenFirst = self.netExtractor(tenFirst)
 		tenSecond = self.netExtractor(tenSecond)
 
-		objEstimate = self.netSix(tenFirst[-1], tenSecond[-1], None)
-		objEstimate = self.netFiv(tenFirst[-2], tenSecond[-2], objEstimate)
-		objEstimate = self.netFou(tenFirst[-3], tenSecond[-3], objEstimate)
-		objEstimate = self.netThr(tenFirst[-4], tenSecond[-4], objEstimate)
-		flowFeature = objEstimate['tenFeat']
-		if self.feature_only:
-			return None, flowFeature
-		objEstimate = self.netTwo(tenFirst[-5], tenSecond[-5], objEstimate)
+		netList = [self.netSix, self.netFiv, self.netFou, self.netThr, self.netTwo]
 
+		objEstimate = None
+		for idx, net in enumerate(netList):
+			objEstimate = netList[idx](tenFirst[-idx-1], tenSecond[-idx-1], objEstimate)
+			if 6-idx == self.feature_level:
+				flowFeature = objEstimate['tenFeatSingle']
+				if self.feature_only:
+					return None, flowFeature
 
 		return (objEstimate['tenFlow'] + self.netRefiner(objEstimate['tenFeat'])), flowFeature
 	# end
